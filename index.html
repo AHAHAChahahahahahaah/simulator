@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор Уровня</title>
+    <style>
+        :root {
+            --accent-green: #4CAF50;
+            --accent-dark: #2E7D32;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: var(--bg-color);
+            background: linear-gradient(135deg, #e0e7e1 0%, #f8f9fa 100%);
+            font-family: 'Segoe UI', sans-serif; 
+        }
+
+        /* ПРЕДУПРЕЖДЕНИЕ ОБ ОРИЕНТАЦИИ */
+        #orientation-warning {
+            display: none;
+            position: fixed; inset: 0;
+            background: white; z-index: 200;
+            flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 20px;
+        }
+
+        @media (orientation: portrait) {
+            #orientation-warning { display: flex; }
+        }
+
+        .phone-icon {
+            width: 50px; height: 80px;
+            border: 3px solid #333; border-radius: 6px;
+            margin-bottom: 20px; animation: rotatePhone 2s ease-in-out infinite;
+        }
+        @keyframes rotatePhone { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
+
+        /* ЭКРАН ЗАГРУЗКИ */
+        #loader-screen {
+            position: fixed; inset: 0; background: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; transition: opacity 0.6s ease;
+        }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #eee; border-top-color: var(--accent-green);
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* UI */
+        #three-canvas { position: absolute; inset: 0; z-index: 15; pointer-events: none; }
+
+        #ui-layer {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: space-between; z-index: 10;
+            padding: 5vh 5vw; box-sizing: border-box;
+        }
+
+        #level-title { 
+            color: var(--text-color); font-size: clamp(1.8rem, 7vh, 2.5rem); 
+            font-weight: 800; text-transform: uppercase; margin: 0;
+        }
+
+        .controls-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 4vw; width: 100%; height: 45vh; 
+        }
+
+        #level-preview {
+            height: 100%; aspect-ratio: 16 / 9; max-width: 65vw;
+            border: 8px solid white; border-radius: 40px;
+            background-size: cover; background-position: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); background-color: white;
+        }
+
+        .nav-btn {
+            background: white; border: none; color: var(--accent-green);
+            width: 9vh; height: 9vh; border-radius: 50%; cursor: pointer; font-size: 4vh;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08); transition: 0.3s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .nav-btn:hover { background: var(--accent-green); color: white; transform: scale(1.1); }
+
+        /* ГЛАВНАЯ КНОПКА */
+        #play-btn {
+            background: var(--accent-green); color: white; border: none;
+            padding: 3vh 15vh; font-size: 4.5vh; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 4px;
+            border-radius: 100px; cursor: pointer; z-index: 20;
+            box-shadow: 0 15px 35px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s ease;
+            animation: pulsePlay 2s infinite;
+        }
+
+        @keyframes pulsePlay {
+            0% { transform: scale(1); box-shadow: 0 10px 25px rgba(76, 175, 80, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 15px 45px rgba(76, 175, 80, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 10px 25px rgba(76, 175, 80, 0.4); }
+        }
+
+        #play-btn:hover { background: var(--accent-dark); transform: scale(1.1) translateY(-5px); }
+    </style>
+</head>
+<body>
+
+    <!-- ПРЕДУПРЕЖДЕНИЕ -->
+    <div id="orientation-warning">
+        <div class="phone-icon"></div>
+        <h2>Пожалуйста, переверните устройство</h2>
+        
+    </div>
+
+    <!-- ЗАГРУЗКА -->
+    <div id="loader-screen">
+        <div class="spinner"></div>
+        <p style="margin-top:20px; font-weight:500; color:#888;">ЗАГРУЗКА</p>
+    </div>
+
+    <div id="three-canvas"></div>
+
+    <div id="ui-layer">
+        <h1 id="level-title">...</h1>
+        
+        <div class="controls-row">
+            <button class="nav-btn" id="prev">❮</button>
+            <div id="level-preview"></div>
+            <button class="nav-btn" id="next">❯</button>
+        </div>
+
+        <button id="play-btn">ИГРАТЬ</button>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const levels = [
+            { title: "Лес", image: "forest.png", url: "forest/index.html" },
+            { title: "Пустыня", image: "desert.png", url: "desert/index.html" },
+            { title: "Паркур", image: "parkour.png", url: "parkour/index.html" }
+        ];
+
+        let currentIndex = 0;
+        let playerModel = null;
+        let anchor = new THREE.Group();
+        const previewEl = document.getElementById('level-preview');
+        const loaderScreen = document.getElementById('loader-screen');
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('three-canvas').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        sun.position.set(5, 10, 7);
+        scene.add(sun);
+
+        scene.add(anchor);
+        camera.position.z = 6;
+
+        const loadingManager = new THREE.LoadingManager();
+        loadingManager.onLoad = () => {
+            loaderScreen.style.opacity = '0';
+            setTimeout(() => loaderScreen.style.display = 'none', 600);
+        };
+
+        const loader = new GLTFLoader(loadingManager);
+        loader.load('player.glb', (gltf) => {
+            playerModel = gltf.scene;
+            const box = new THREE.Box3().setFromObject(playerModel);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            playerModel.position.set(-center.x, -center.y, -center.z);
+            anchor.scale.set(5.5, 5.5, 5.5); // Еще чуть крупнее
+            anchor.add(playerModel);
+        });
+
+        function sync() {
+            if (!anchor) return;
+            const rect = previewEl.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            const vector = new THREE.Vector3((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1, 0.5);
+            vector.unproject(camera);
+            const dir = vector.sub(camera.position).normalize();
+            const distance = -camera.position.z / dir.z;
+            anchor.position.copy(camera.position.clone().add(dir.multiplyScalar(distance)));
+        }
+
+        function updateUI() {
+            document.getElementById('level-title').innerText = levels[currentIndex].title;
+            previewEl.style.backgroundImage = `url('${levels[currentIndex].image}')`;
+        }
+
+        document.getElementById('next').onclick = () => { currentIndex = (currentIndex + 1) % levels.length; updateUI(); };
+        document.getElementById('prev').onclick = () => { currentIndex = (currentIndex - 1 + levels.length) % levels.length; updateUI(); };
+        document.getElementById('play-btn').onclick = () => { window.location.href = levels[currentIndex].url; };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (playerModel) {
+                playerModel.rotation.y += 0.008;
+                sync();
+            }
+            renderer.render(scene, camera);
+        }
+
+        updateUI();
+        animate();
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+    </script>
+</body>
+</html>
