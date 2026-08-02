@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Пустыня</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; touch-action: none; }
+        canvas { position: absolute; top: 0; left: 0; z-index: 1; }
+        #loader-screen {
+            position: fixed; inset: 0; background: #1a1408;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; transition: opacity 0.6s ease;
+        }
+        #loader-screen .spinner {
+            width: 48px; height: 48px;
+            border: 5px solid #3a2e1a; border-top-color: #e8a020;
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 24px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loader-screen p {
+            color: #a08050; font-family: sans-serif; font-size: 13px;
+            text-transform: uppercase; letter-spacing: 2px; margin: 0 0 16px;
+        }
+        #loader-track {
+            width: 200px; height: 4px; background: #3a2e1a; border-radius: 2px; overflow: hidden;
+        }
+        #loader-bar {
+            height: 100%; width: 0%; background: #e8a020;
+            transition: width 0.2s ease; border-radius: 2px;
+        }
+        #loader-pct {
+            color: #e8a020; font-family: sans-serif; font-size: 12px;
+            margin-top: 8px; letter-spacing: 1px;
+        }
+        #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 120px; height: 120px; z-index: 20; }
+        #jump-button { 
+            position: absolute; bottom: 60px; right: 40px; width: 70px; height: 70px; 
+            background: rgba(255, 255, 255, 0.3); border: 2px solid #fff; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; color: white; 
+            font-family: sans-serif; user-select: none; z-index: 20; 
+        }
+    </style>
+</head>
+<body>
+    <div id="loader-screen">
+        <div class="spinner"></div>
+        <p>Загрузка</p>
+        <div id="loader-track"><div id="loader-bar"></div></div>
+        <div id="loader-pct">0%</div>
+    </div>
+
+    <div id="joystick-zone"></div>
+    <div id="jump-button"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+    <script type="module" src="./js/game.js?v=10"></script>
+</body>
+</html>
